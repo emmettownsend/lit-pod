@@ -25,6 +25,8 @@ jobs:
         # Make sure the prerelease is tagged with the branch name, and that they are sorted by build:
         npm version prerelease --preid=$TAG_SLUG-$GITHUB_RUN_ID-$GITHUB_RUN_NUMBER
     - run: npm ci
+    - name: Generate list of dependency licences
+      run: npm run list-licenses
     - name: Publish an npm tag for this branch
       run: npm publish --tag "$TAG_SLUG"
       env:
