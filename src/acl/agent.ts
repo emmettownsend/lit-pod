@@ -23,6 +23,7 @@ import {
   WithResourceInfo,
   LitDataset,
   WebId,
+  WithChangeLog,
   unstable_Acl,
   unstable_AclDataset,
   unstable_AccessModes,
@@ -143,6 +144,14 @@ export function unstable_getAgentResourceAccessModesAll(
   );
   const agentResourceRules = getAgentAclRules(resourceRules);
   return getAccessModesByAgent(agentResourceRules);
+}
+
+export function unstable_setAgentResourceAccessModes(
+  acl: unstable_AclDataset,
+  agent: WebId,
+  accessModes: unstable_AccessModes
+): unstable_AclDataset & WithChangeLog {
+  throw new Error("To be implemented");
 }
 
 /**

@@ -20,6 +20,7 @@
  */
 
 import { describe, it, expect } from "@jest/globals";
+import { Quad } from "rdf-js";
 import { dataset } from "@rdfjs/dataset";
 import { DataFactory } from "n3";
 import {
@@ -27,6 +28,7 @@ import {
   unstable_getAgentResourceAccessModesAll,
   unstable_getAgentDefaultAccessModesOne,
   unstable_getAgentDefaultAccessModesAll,
+  unstable_setAgentResourceAccessModes,
   unstable_getAgentAccessModesOne,
   unstable_getAgentAccessModesAll,
 } from "./agent";
@@ -845,6 +847,182 @@ describe("getAgentResourceAccessModesAll", () => {
       },
     });
   });
+});
+
+describe("setAgentResourceAccessModesOne", () => {
+  it("adds Quads for the appropriate Access Modes", () => {
+    const sourceDataset = Object.assign(
+      getMockDataset("https://arbitrary.pod/resource.acl"),
+      { accessTo: "https://arbitrary.pod/resource" }
+    );
+
+    const updatedDataset = unstable_setAgentResourceAccessModes(
+      sourceDataset,
+      "https://some.pod/profileDoc#webId",
+      {
+        read: true,
+        append: false,
+        write: false,
+        control: false,
+      }
+    );
+
+    const addedQuads: Quad[] = Array.from(updatedDataset);
+    expect(addedQuads).toHaveLength(4);
+    expect(addedQuads[0].predicate.value).toBe(
+      "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+    );
+    expect(addedQuads[0].object.value).toBe(
+      "http://www.w3.org/ns/auth/acl#Authorization"
+    );
+    expect(addedQuads[1].predicate.value).toBe(
+      "http://www.w3.org/ns/auth/acl#accessTo"
+    );
+    expect(addedQuads[1].object.value).toBe("https://arbitrary.pod/resource");
+    expect(addedQuads[2].predicate.value).toBe(
+      "http://www.w3.org/ns/auth/acl#agent"
+    );
+    expect(addedQuads[2].object.value).toBe(
+      "https://some.pod/profileDoc#webId"
+    );
+    expect(addedQuads[3].predicate.value).toBe(
+      "http://www.w3.org/ns/auth/acl#mode"
+    );
+    expect(addedQuads[3].object.value).toBe(
+      "http://www.w3.org/ns/auth/acl#Read"
+    );
+  });
+
+  it("does not alter the input LitDataset", () => {
+    const sourceDataset = Object.assign(
+      getMockDataset("https://arbitrary.pod/resource.acl"),
+      { accessTo: "https://arbitrary.pod/resource" }
+    );
+
+    unstable_setAgentResourceAccessModes(
+      sourceDataset,
+      "https://some.pod/profileDoc#webId",
+      {
+        read: true,
+        append: false,
+        write: false,
+        control: false,
+      }
+    );
+
+    expect(Array.from(sourceDataset)).toEqual([]);
+  });
+
+  it("keeps a log of changes made to the ACL", () => {
+    const sourceDataset = Object.assign(
+      getMockDataset("https://arbitrary.pod/resource.acl"),
+      { accessTo: "https://arbitrary.pod/resource" }
+    );
+
+    const updatedDataset = unstable_setAgentResourceAccessModes(
+      sourceDataset,
+      "https://some.pod/profileDoc#webId",
+      {
+        read: true,
+        append: false,
+        write: false,
+        control: false,
+      }
+    );
+
+    const deletedQuads = updatedDataset.changeLog.deletions;
+    expect(deletedQuads).toEqual([]);
+    const addedQuads = updatedDataset.changeLog.additions;
+    expect(addedQuads).toHaveLength(4);
+    expect(addedQuads[0].predicate.value).toBe(
+      "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+    );
+    expect(addedQuads[0].object.value).toBe(
+      "http://www.w3.org/ns/auth/acl#Authorization"
+    );
+    expect(addedQuads[1].predicate.value).toBe(
+      "http://www.w3.org/ns/auth/acl#accessTo"
+    );
+    expect(addedQuads[1].object.value).toBe("https://arbitrary.pod/resource");
+    expect(addedQuads[2].predicate.value).toBe(
+      "http://www.w3.org/ns/auth/acl#agent"
+    );
+    expect(addedQuads[2].object.value).toBe(
+      "https://some.pod/profileDoc#webId"
+    );
+    expect(addedQuads[3].predicate.value).toBe(
+      "http://www.w3.org/ns/auth/acl#mode"
+    );
+    expect(addedQuads[3].object.value).toBe(
+      "http://www.w3.org/ns/auth/acl#Read"
+    );
+  });
+
+  it("does not forget to add a Quad for Append access if Write access is not given", () => {
+    // This test is basically there to test for regressions
+    // if we ever try to be clever about inferring Append access
+    // (but we should be able to leave that to the server).
+    const sourceDataset = Object.assign(
+      getMockDataset("https://arbitrary.pod/resource.acl"),
+      { accessTo: "https://arbitrary.pod/resource" }
+    );
+
+    const updatedDataset = unstable_setAgentResourceAccessModes(
+      sourceDataset,
+      "https://some.pod/profileDoc#webId",
+      {
+        read: false,
+        append: true,
+        write: false,
+        control: false,
+      }
+    );
+
+    const addedQuads: Quad[] = Array.from(updatedDataset);
+    expect(addedQuads).toHaveLength(4);
+    expect(addedQuads[0].predicate.value).toBe(
+      "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+    );
+    expect(addedQuads[0].object.value).toBe(
+      "http://www.w3.org/ns/auth/acl#Authorization"
+    );
+    expect(addedQuads[1].predicate.value).toBe(
+      "http://www.w3.org/ns/auth/acl#accessTo"
+    );
+    expect(addedQuads[1].object.value).toBe("https://arbitrary.pod/resource");
+    expect(addedQuads[2].predicate.value).toBe(
+      "http://www.w3.org/ns/auth/acl#agent"
+    );
+    expect(addedQuads[2].object.value).toBe(
+      "https://some.pod/profileDoc#webId"
+    );
+    expect(addedQuads[3].predicate.value).toBe(
+      "http://www.w3.org/ns/auth/acl#mode"
+    );
+    expect(addedQuads[3].object.value).toBe(
+      "http://www.w3.org/ns/auth/acl#Append"
+    );
+  });
+
+  it.todo(
+    "replaces existing Quads defining Access Modes for this agent",
+    () => {}
+  );
+
+  it.todo(
+    "removes all Quads for an ACL rule if it no longer applies to anything",
+    () => {}
+  );
+
+  it.todo(
+    "does not remove ACL rules that no longer apply to the given Agent, but still apply to others",
+    () => {}
+  );
+
+  it.todo(
+    "does not remove ACL rules that no longer apply to the given Agent, but still apply to non-Agents",
+    () => {}
+  );
 });
 
 describe("getAgentDefaultAccessModesOne", () => {
